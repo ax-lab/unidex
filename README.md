@@ -1,2 +1,3 @@
 # unidex
-Unicode codepoint information and other utilities for Rust
+
+Unicode codepoint information and other utilities for Rust.
