@@ -9,7 +9,7 @@ from urllib import request
 UNICODE_SITE = 'https://www.unicode.org'
 UCD_ZIP_FILE = 'Public/UCD/latest/ucd/UCD.zip'
 
-OUTPUT_DIRECTORY_UCD = 'data/ucd'
+OUTPUT_DIRECTORY_UCD = 'vendor-data/ucd'
 
 
 root_dir = os.path.join(os.path.dirname(__file__), '..')

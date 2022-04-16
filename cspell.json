@@ -10,7 +10,7 @@
 	"ignorePaths": [
 		"cspell.json",
 		".vscode/**",
-		"data/ucd/**"
+		"vendor-data/ucd/**"
 	],
 	"ignoreRegExpList": [
 		"`[^\\s]+`"
