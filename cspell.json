@@ -8,10 +8,9 @@
 		"teh"
 	],
 	"ignorePaths": [
-		".vscode/**",
 		"cspell.json",
-		"node_modules/**",
-		"package-lock.json"
+		".vscode/**",
+		"data/ucd/**"
 	],
 	"ignoreRegExpList": [
 		"`[^\\s]+`"
