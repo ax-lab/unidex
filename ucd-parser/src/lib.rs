@@ -11,3 +11,5 @@
 
 mod input;
 pub use input::*;
+
+pub mod blocks;
