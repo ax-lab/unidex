@@ -36,11 +36,7 @@ impl<'a> Block<'a> {
 	pub fn parse(s: &'a str) -> Self {
 		let semicolon = s.find(";").expect("parsing block: missing `;`");
 		let (range, name) = (&s[..semicolon], &s[semicolon + 1..].trim());
-		let ellipsis = range.find("..").expect("parsing block: range missing `..`");
-		let start =
-			u32::from_str_radix(&range[..ellipsis], 16).expect("parsing block: invalid start code");
-		let end = u32::from_str_radix(&range[ellipsis + 2..], 16)
-			.expect("parsing block: invalid end code");
+		let (start, end) = parse_range!(range, "block: range");
 		Block::new(start..=end, name)
 	}
 }
