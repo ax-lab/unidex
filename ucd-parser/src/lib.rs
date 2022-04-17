@@ -16,3 +16,4 @@ pub mod input;
 pub mod parse;
 
 pub mod blocks;
+pub mod unicode_data;
