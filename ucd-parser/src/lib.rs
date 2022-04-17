@@ -8,3 +8,6 @@
 //! The above has consequences particularly for error handling. For simplicity
 //! sake and ease of use, most errors are handled with simple assertions and
 //! panics.
+
+mod input;
+pub use input::*;
