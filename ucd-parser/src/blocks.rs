@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::Input;
+use crate::input::{Input, InputFile};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -17,7 +17,7 @@ pub struct Block<'a> {
 
 impl<'a> Block<'a> {
 	pub fn load() -> impl Iterator<Item = Block<'static>> {
-		let input = Input::read("vendor-data/ucd/Blocks.txt");
+		let input = Input::get(InputFile::Blocks);
 		let lines = input.lines();
 		lines.map(|x| Block::parse(x).unwrap())
 	}
@@ -87,7 +87,7 @@ mod tests {
 
 	#[test]
 	fn can_load_file() {
-		let source = crate::Input::read("vendor-data/ucd/Blocks.txt");
+		let source = include_ucd!("Blocks.txt");
 		let source = source.lines().collect::<Vec<_>>();
 
 		let blocks = Block::load();

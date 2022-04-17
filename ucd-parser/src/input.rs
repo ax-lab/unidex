@@ -1,45 +1,35 @@
-use std::{
-	collections::HashMap,
-	path::{Path, PathBuf},
-	sync::Mutex,
-};
+/// Include an input file relative to the project root directory.
+macro_rules! include_input {
+	($path:expr) => {
+		$crate::input::Input(include_str!(concat!("../../", $path)))
+	};
+}
 
-use once_cell::sync::Lazy;
+/// Include an input file from the UCD data by the file name.
+macro_rules! include_ucd {
+	($filename:expr) => {
+		include_input!(concat!("vendor-data/ucd/", $filename))
+	};
+}
 
-pub struct Input(&'static str);
+/// Enum of supported input files from the UCD data.
+#[derive(Clone, Copy)]
+pub enum InputFile {
+	Blocks,
+}
+
+/// Input wrapper providing support for reading data files from the UCD data.
+pub struct Input(pub &'static str);
 
 impl Input {
-	/// Read a text file relative to the project root directory. Files are
-	/// cached and never unloaded.
-	pub fn read<T: AsRef<Path>>(filename: T) -> Self {
-		static FILES: Lazy<Mutex<HashMap<PathBuf, Box<str>>>> = Lazy::new(|| Default::default());
-
-		let base_dir = env!("CARGO_MANIFEST_DIR");
-		let filename = filename.as_ref();
-		let filename = if base_dir != "" {
-			let mut path = PathBuf::from(base_dir);
-			path.push("../");
-			path.push(filename);
-			path
-		} else {
-			filename.to_path_buf()
-		};
-
-		let mut files = FILES.lock().unwrap();
-		let entry = files.entry(filename.clone()).or_insert_with(|| {
-			let input = std::fs::read_to_string(filename).expect("reading input");
-			input.into_boxed_str()
-		});
-
-		// this should be safe because:
-		// - the string content is heap-allocated
-		// - it is in a static lifetime container
-		// - we never modify an entry once it is loaded
-		let input: &str = entry;
-		let input = unsafe { std::mem::transmute(input) };
-		Input(input)
+	/// Get one of the supported [`InputFile`]s from the UCD data.
+	pub fn get(file: InputFile) -> Self {
+		match file {
+			InputFile::Blocks => include_ucd!("Blocks.txt"),
+		}
 	}
 
+	/// Iterator over the input lines filtering comments and blank lines.
 	pub fn lines(&self) -> impl Iterator<Item = &'static str> {
 		let lines = self.0.lines();
 		let lines = lines
@@ -57,17 +47,15 @@ impl Input {
 }
 
 #[cfg(test)]
-mod test_input {
-	use super::Input;
-
+mod tests {
 	macro_rules! read_test_input {
 		($filename:expr) => {
-			Input::read(concat!("ucd-parser/testdata/input/", $filename))
+			include_input!(concat!("ucd-parser/testdata/input/", $filename))
 		};
 	}
 
 	#[test]
-	fn read_can_open_project_files() {
+	fn can_open_project_files_and_read_lines() {
 		let input = read_test_input!("basic-123.in");
 		let input = input.lines().collect::<Vec<_>>();
 		assert_eq!(input, vec!["line 1", "line 2", "line 3"]);
@@ -78,14 +66,14 @@ mod test_input {
 	}
 
 	#[test]
-	fn read_lines_skip_empty_lines() {
+	fn input_lines_skip_empty() {
 		let input = read_test_input!("empty-lines.in");
 		let input = input.lines().collect::<Vec<_>>();
 		assert_eq!(input, vec!["non-empty 1", "non-empty 2", "non-empty 3"]);
 	}
 
 	#[test]
-	fn read_lines_filter_comments() {
+	fn input_lines_filter_out_comments() {
 		let input = read_test_input!("comments.in");
 		let input = input.lines().collect::<Vec<_>>();
 		assert_eq!(input, vec!["nc 1", "nc 2", "nc 3", "nc 4"]);

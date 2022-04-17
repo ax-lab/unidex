@@ -9,7 +9,7 @@
 //! sake and ease of use, most errors are handled with simple assertions and
 //! panics.
 
-mod input;
-pub use input::*;
+#[macro_use]
+pub mod input;
 
 pub mod blocks;
