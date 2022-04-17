@@ -1,9 +1,19 @@
-use std::path::{Path, PathBuf};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+	sync::Mutex,
+};
 
-pub struct Input(String);
+use once_cell::sync::Lazy;
+
+pub struct Input(&'static str);
 
 impl Input {
+	/// Read a text file relative to the project root directory. Files are
+	/// cached and never unloaded.
 	pub fn read<T: AsRef<Path>>(filename: T) -> Self {
+		static FILES: Lazy<Mutex<HashMap<PathBuf, Box<str>>>> = Lazy::new(|| Default::default());
+
 		let base_dir = env!("CARGO_MANIFEST_DIR");
 		let filename = filename.as_ref();
 		let filename = if base_dir != "" {
@@ -14,11 +24,23 @@ impl Input {
 		} else {
 			filename.to_path_buf()
 		};
-		let input = std::fs::read_to_string(filename).expect("reading input");
+
+		let mut files = FILES.lock().unwrap();
+		let entry = files.entry(filename.clone()).or_insert_with(|| {
+			let input = std::fs::read_to_string(filename).expect("reading input");
+			input.into_boxed_str()
+		});
+
+		// this should be safe because:
+		// - the string content is heap-allocated
+		// - it is in a static lifetime container
+		// - we never modify an entry once it is loaded
+		let input: &str = entry;
+		let input = unsafe { std::mem::transmute(input) };
 		Input(input)
 	}
 
-	pub fn lines(&self) -> impl Iterator<Item = &str> {
+	pub fn lines(&self) -> impl Iterator<Item = &'static str> {
 		let lines = self.0.lines();
 		let lines = lines
 			.map(|x| {
