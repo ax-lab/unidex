@@ -1,5 +1,7 @@
 use std::ops::RangeInclusive;
 
+use crate::Input;
+
 #[derive(Debug)]
 pub enum ParseError {
 	BlockFormat,
@@ -14,6 +16,12 @@ pub struct Block<'a> {
 }
 
 impl<'a> Block<'a> {
+	pub fn load() -> impl Iterator<Item = Block<'static>> {
+		let input = Input::read("vendor-data/ucd/Blocks.txt");
+		let lines = input.lines();
+		lines.map(|x| Block::parse(x).unwrap())
+	}
+
 	pub fn new(range: RangeInclusive<u32>, name: &'a str) -> Self {
 		Block { range, name }
 	}
@@ -75,5 +83,15 @@ mod tests {
 		let block = Block::parse(input).unwrap();
 		assert_eq!(block.range(), 0..=0xFCFC);
 		assert_eq!(block.name(), "other block");
+	}
+
+	#[test]
+	fn can_load_file() {
+		let source = crate::Input::read("vendor-data/ucd/Blocks.txt");
+		let source = source.lines().collect::<Vec<_>>();
+
+		let blocks = Block::load();
+		let blocks = blocks.map(|x| x.to_string()).collect::<Vec<_>>();
+		assert_eq!(blocks, source);
 	}
 }
