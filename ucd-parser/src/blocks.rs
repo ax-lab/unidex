@@ -1,25 +1,24 @@
 use std::ops::RangeInclusive;
 
+use once_cell::sync::Lazy;
+
 use crate::input::{Input, InputFile};
 
-#[derive(Debug)]
-pub enum ParseError {
-	BlockFormat,
-	BlockRangeStart,
-	BlockRangeEnd,
-}
-
-#[allow(unused)]
 pub struct Block<'a> {
 	range: RangeInclusive<u32>,
 	name: &'a str,
 }
 
 impl<'a> Block<'a> {
-	pub fn load() -> impl Iterator<Item = Block<'static>> {
-		let input = Input::get(InputFile::Blocks);
-		let lines = input.lines();
-		lines.map(|x| Block::parse(x).unwrap())
+	pub fn list() -> &'static [Block<'static>] {
+		static BLOCKS: Lazy<Box<[Block]>> = Lazy::new(|| {
+			let input = Input::get(InputFile::Blocks);
+			let lines = input.lines();
+			let blocks = lines.map(|x| Block::parse(x));
+			let blocks = blocks.collect::<Vec<_>>();
+			blocks.into_boxed_slice()
+		});
+		&BLOCKS
 	}
 
 	pub fn new(range: RangeInclusive<u32>, name: &'a str) -> Self {
@@ -34,16 +33,15 @@ impl<'a> Block<'a> {
 		self.name
 	}
 
-	pub fn parse(s: &'a str) -> Result<Self, ParseError> {
-		let semicolon = s.find(";").ok_or(ParseError::BlockFormat)?;
-		let name = &s[semicolon + 1..].trim();
-		let range = &s[..semicolon];
-		let ellipsis = range.find("..").ok_or(ParseError::BlockFormat)?;
+	pub fn parse(s: &'a str) -> Self {
+		let semicolon = s.find(";").expect("parsing block: missing `;`");
+		let (range, name) = (&s[..semicolon], &s[semicolon + 1..].trim());
+		let ellipsis = range.find("..").expect("parsing block: range missing `..`");
 		let start =
-			u32::from_str_radix(&range[..ellipsis], 16).map_err(|_| ParseError::BlockRangeStart)?;
+			u32::from_str_radix(&range[..ellipsis], 16).expect("parsing block: invalid start code");
 		let end = u32::from_str_radix(&range[ellipsis + 2..], 16)
-			.map_err(|_| ParseError::BlockRangeEnd)?;
-		Ok(Block::new(start..=end, name))
+			.expect("parsing block: invalid end code");
+		Block::new(start..=end, name)
 	}
 }
 
@@ -75,12 +73,12 @@ mod tests {
 	#[test]
 	fn block_supports_parsing() {
 		let input = "0001..00FF; test block";
-		let block = Block::parse(input).unwrap();
+		let block = Block::parse(input);
 		assert_eq!(block.range(), 1..=255);
 		assert_eq!(block.name(), "test block");
 
 		let input = "0000..FCFC; other block";
-		let block = Block::parse(input).unwrap();
+		let block = Block::parse(input);
 		assert_eq!(block.range(), 0..=0xFCFC);
 		assert_eq!(block.name(), "other block");
 	}
@@ -90,8 +88,8 @@ mod tests {
 		let source = include_ucd!("Blocks.txt");
 		let source = source.lines().collect::<Vec<_>>();
 
-		let blocks = Block::load();
-		let blocks = blocks.map(|x| x.to_string()).collect::<Vec<_>>();
+		let blocks = Block::list();
+		let blocks = blocks.iter().map(|x| x.to_string()).collect::<Vec<_>>();
 		assert_eq!(blocks, source);
 	}
 }
