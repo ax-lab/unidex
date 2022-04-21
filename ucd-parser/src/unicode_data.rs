@@ -1,4 +1,4 @@
-use super::{Bidi, Category, Decomposition};
+use super::data::*;
 
 pub struct UnicodeData<'a> {
 	code: u32,
@@ -155,16 +155,6 @@ pub enum DecimalValue {
 pub enum DigitValue {
 	None,
 	Some(u32),
-}
-
-/// Numeric value property for a character. Includes fractions such as the
-/// `U+2155 VULGAR FRACTION ONE FIFTH` and numeric values for compatibility
-/// characters such as circled numbers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum NumericValue {
-	None,
-	Integer(u32),
-	Rational(u32, u32),
 }
 
 /// Mirrored property for characters in bidirectional text. The list of

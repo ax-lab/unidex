@@ -6,3 +6,6 @@ pub use category::*;
 
 mod decomposition;
 pub use decomposition::*;
+
+mod numeric_value;
+pub use numeric_value::*;
