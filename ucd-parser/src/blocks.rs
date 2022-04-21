@@ -71,7 +71,7 @@ impl<'a> std::fmt::Display for Block<'a> {
 
 #[cfg(test)]
 mod tests {
-	use super::Block;
+	use super::*;
 
 	#[test]
 	fn supports_to_string() {

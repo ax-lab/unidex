@@ -220,16 +220,7 @@ pub enum CaseMapping {
 
 #[cfg(test)]
 mod tests {
-	use super::Bidi;
-	use super::CaseMapping;
-	use super::Category;
-	use super::DecimalValue;
-	use super::Decomposition;
-	use super::DecompositionTag;
-	use super::DigitValue;
-	use super::Mirrored;
-	use super::NumericValue;
-	use super::UnicodeData;
+	use super::*;
 
 	#[test]
 	fn can_create_new() {
