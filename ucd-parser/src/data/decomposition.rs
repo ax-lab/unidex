@@ -115,6 +115,30 @@ impl DecompositionTag {
 	}
 }
 
+impl std::fmt::Display for DecompositionTag {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let output = match self {
+			DecompositionTag::Font => "<font>",
+			DecompositionTag::NoBreak => "<noBreak>",
+			DecompositionTag::Initial => "<initial>",
+			DecompositionTag::Medial => "<medial>",
+			DecompositionTag::Final => "<final>",
+			DecompositionTag::Isolated => "<isolated>",
+			DecompositionTag::Circle => "<circle>",
+			DecompositionTag::Super => "<super>",
+			DecompositionTag::Sub => "<sub>",
+			DecompositionTag::Vertical => "<vertical>",
+			DecompositionTag::Wide => "<wide>",
+			DecompositionTag::Narrow => "<narrow>",
+			DecompositionTag::Small => "<small>",
+			DecompositionTag::Square => "<square>",
+			DecompositionTag::Fraction => "<fraction>",
+			DecompositionTag::Compat => "<compat>",
+		};
+		write!(f, "{}", output)
+	}
+}
+
 #[cfg(test)]
 mod test_decomposition {
 	use super::*;
@@ -203,5 +227,33 @@ mod test_tags {
 	#[test]
 	fn parse_tag_from_invalid_string_is_none() {
 		assert_eq!(DecompositionTag::parse("xx"), None);
+	}
+
+	#[test]
+	fn supports_to_string() {
+		fn check(input: DecompositionTag, expected: &'static str) {
+			assert_eq!(input.to_string(), expected);
+			assert_eq!(
+				DecompositionTag::parse(input.to_string()).expect(expected),
+				input
+			);
+		}
+
+		check(DecompositionTag::Font, "<font>");
+		check(DecompositionTag::NoBreak, "<noBreak>");
+		check(DecompositionTag::Initial, "<initial>");
+		check(DecompositionTag::Medial, "<medial>");
+		check(DecompositionTag::Final, "<final>");
+		check(DecompositionTag::Isolated, "<isolated>");
+		check(DecompositionTag::Circle, "<circle>");
+		check(DecompositionTag::Super, "<super>");
+		check(DecompositionTag::Sub, "<sub>");
+		check(DecompositionTag::Vertical, "<vertical>");
+		check(DecompositionTag::Wide, "<wide>");
+		check(DecompositionTag::Narrow, "<narrow>");
+		check(DecompositionTag::Small, "<small>");
+		check(DecompositionTag::Square, "<square>");
+		check(DecompositionTag::Fraction, "<fraction>");
+		check(DecompositionTag::Compat, "<compat>");
 	}
 }
