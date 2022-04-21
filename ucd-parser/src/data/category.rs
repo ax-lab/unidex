@@ -104,6 +104,44 @@ impl Category {
 	}
 }
 
+impl std::fmt::Display for Category {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let output = match self {
+			Category::OtherNotAssigned => "Cn",
+			Category::LetterUppercase => "Lu",
+			Category::LetterLowercase => "Ll",
+			Category::LetterTitlecase => "Lt",
+			Category::MarkNonSpacing => "Mn",
+			Category::MarkSpacingCombining => "Mc",
+			Category::MarkEnclosing => "Me",
+			Category::NumberDecimalDigit => "Nd",
+			Category::NumberLetter => "Nl",
+			Category::NumberOther => "No",
+			Category::SeparatorSpace => "Zs",
+			Category::SeparatorLine => "Zl",
+			Category::SeparatorParagraph => "Zp",
+			Category::OtherControl => "Cc",
+			Category::OtherFormat => "Cf",
+			Category::OtherSurrogate => "Cs",
+			Category::OtherPrivateUse => "Co",
+			Category::LetterModifier => "Lm",
+			Category::LetterOther => "Lo",
+			Category::PunctuationConnector => "Pc",
+			Category::PunctuationDash => "Pd",
+			Category::PunctuationOpen => "Ps",
+			Category::PunctuationClose => "Pe",
+			Category::PunctuationInitialQuote => "Pi",
+			Category::PunctuationFinalQuote => "Pf",
+			Category::PunctuationOther => "Po",
+			Category::SymbolMath => "Sm",
+			Category::SymbolCurrency => "Sc",
+			Category::SymbolModifier => "Sk",
+			Category::SymbolOther => "So",
+		};
+		write!(f, "{}", output)
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -149,5 +187,44 @@ mod tests {
 	#[test]
 	fn parse_from_invalid_string_is_none() {
 		assert_eq!(Category::parse("xx"), None);
+	}
+
+	#[test]
+	fn supports_to_string() {
+		fn check(input: Category, expected: &'static str) {
+			assert_eq!(input.to_string(), expected);
+			assert_eq!(Category::parse(input.to_string()).expect(expected), input);
+		}
+
+		check(Category::OtherNotAssigned, "Cn");
+		check(Category::LetterUppercase, "Lu");
+		check(Category::LetterLowercase, "Ll");
+		check(Category::LetterTitlecase, "Lt");
+		check(Category::MarkNonSpacing, "Mn");
+		check(Category::MarkSpacingCombining, "Mc");
+		check(Category::MarkEnclosing, "Me");
+		check(Category::NumberDecimalDigit, "Nd");
+		check(Category::NumberLetter, "Nl");
+		check(Category::NumberOther, "No");
+		check(Category::SeparatorSpace, "Zs");
+		check(Category::SeparatorLine, "Zl");
+		check(Category::SeparatorParagraph, "Zp");
+		check(Category::OtherControl, "Cc");
+		check(Category::OtherFormat, "Cf");
+		check(Category::OtherSurrogate, "Cs");
+		check(Category::OtherPrivateUse, "Co");
+		check(Category::LetterModifier, "Lm");
+		check(Category::LetterOther, "Lo");
+		check(Category::PunctuationConnector, "Pc");
+		check(Category::PunctuationDash, "Pd");
+		check(Category::PunctuationOpen, "Ps");
+		check(Category::PunctuationClose, "Pe");
+		check(Category::PunctuationInitialQuote, "Pi");
+		check(Category::PunctuationFinalQuote, "Pf");
+		check(Category::PunctuationOther, "Po");
+		check(Category::SymbolMath, "Sm");
+		check(Category::SymbolCurrency, "Sc");
+		check(Category::SymbolModifier, "Sk");
+		check(Category::SymbolOther, "So");
 	}
 }
