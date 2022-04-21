@@ -5,6 +5,45 @@ pub struct Decomposition {
 	pub codes: Vec<u32>,
 }
 
+impl Decomposition {
+	pub fn parse<T: AsRef<str>>(input: T, message: &str) -> Option<Self> {
+		let input = input.as_ref();
+		if input.len() == 0 {
+			return None;
+		}
+
+		let mut output = Decomposition {
+			tag: None,
+			codes: Default::default(),
+		};
+		for (n, value) in input.split(' ').enumerate() {
+			if n == 0 && value.starts_with('<') {
+				output.tag = DecompositionTag::parse(value);
+				output
+					.tag
+					.ok_or_else(|| {
+						format!(
+							"parsing {}: decomposition tag `{}` is not valid",
+							message, value
+						)
+					})
+					.unwrap();
+			} else {
+				let code = u32::from_str_radix(value, 16)
+					.map_err(|err| {
+						format!(
+							"parsing {}: decomposition code `{}` is not valid -- {}",
+							message, value, err
+						)
+					})
+					.unwrap();
+				output.codes.push(code);
+			}
+		}
+		Some(output)
+	}
+}
+
 /// The tags supplied with certain [`Decomposition`] mappings generally indicate
 /// formatting information.
 ///
@@ -77,7 +116,64 @@ impl DecompositionTag {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_decomposition {
+	use super::*;
+
+	#[test]
+	fn parses_empty_string_as_none() {
+		assert_eq!(Decomposition::parse("", "some row"), None);
+	}
+
+	#[test]
+	fn parses_without_a_tag() {
+		let input = "309D 3099";
+		assert_eq!(
+			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition {
+				tag: None,
+				codes: vec![0x309D, 0x3099]
+			}
+		);
+	}
+
+	#[test]
+	fn parses_with_a_tag() {
+		let input = "<vertical> 3088 308A";
+		assert_eq!(
+			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition {
+				tag: Some(DecompositionTag::Vertical),
+				codes: vec![0x3088, 0x308A]
+			}
+		);
+
+		let input = "<compat> 1100";
+		assert_eq!(
+			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition {
+				tag: Some(DecompositionTag::Compat),
+				codes: vec![0x1100]
+			}
+		);
+	}
+
+	#[test]
+	#[should_panic = "parsing some row: decomposition tag `<xx>` is not valid"]
+	fn panics_on_invalid_tag() {
+		let input = "<xx> FFFF";
+		Decomposition::parse(input, "some row");
+	}
+
+	#[test]
+	#[should_panic = "parsing some row: decomposition code `XX` is not valid"]
+	fn panics_on_invalid_code() {
+		let input = "FFFF XX FFFF";
+		Decomposition::parse(input, "some row");
+	}
+}
+
+#[cfg(test)]
+mod test_tags {
 	use super::*;
 
 	#[test]
