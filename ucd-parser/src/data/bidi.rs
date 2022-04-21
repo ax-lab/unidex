@@ -91,6 +91,37 @@ impl Bidi {
 	}
 }
 
+impl std::fmt::Display for Bidi {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let output = match self {
+			Bidi::L => "L",
+			Bidi::R => "R",
+			Bidi::AL => "AL",
+			Bidi::EN => "EN",
+			Bidi::ES => "ES",
+			Bidi::ET => "ET",
+			Bidi::AN => "AN",
+			Bidi::CS => "CS",
+			Bidi::NSM => "NSM",
+			Bidi::BN => "BN",
+			Bidi::B => "B",
+			Bidi::S => "S",
+			Bidi::WS => "WS",
+			Bidi::ON => "ON",
+			Bidi::LRE => "LRE",
+			Bidi::LRO => "LRO",
+			Bidi::RLE => "RLE",
+			Bidi::RLO => "RLO",
+			Bidi::PDF => "PDF",
+			Bidi::LRI => "LRI",
+			Bidi::RLI => "RLI",
+			Bidi::FSI => "FSI",
+			Bidi::PDI => "PDI",
+		};
+		write!(f, "{}", output)
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -129,5 +160,37 @@ mod tests {
 	#[test]
 	fn parse_from_invalid_string_is_none() {
 		assert_eq!(Bidi::parse("xx"), None);
+	}
+
+	#[test]
+	fn supports_to_string() {
+		fn check(input: Bidi, expected: &'static str) {
+			assert_eq!(input.to_string(), expected);
+			assert_eq!(Bidi::parse(input.to_string()).expect(expected), input);
+		}
+
+		check(Bidi::L, "L");
+		check(Bidi::R, "R");
+		check(Bidi::AL, "AL");
+		check(Bidi::EN, "EN");
+		check(Bidi::ES, "ES");
+		check(Bidi::ET, "ET");
+		check(Bidi::AN, "AN");
+		check(Bidi::CS, "CS");
+		check(Bidi::NSM, "NSM");
+		check(Bidi::BN, "BN");
+		check(Bidi::B, "B");
+		check(Bidi::S, "S");
+		check(Bidi::WS, "WS");
+		check(Bidi::ON, "ON");
+		check(Bidi::LRE, "LRE");
+		check(Bidi::LRO, "LRO");
+		check(Bidi::RLE, "RLE");
+		check(Bidi::RLO, "RLO");
+		check(Bidi::PDF, "PDF");
+		check(Bidi::LRI, "LRI");
+		check(Bidi::RLI, "RLI");
+		check(Bidi::FSI, "FSI");
+		check(Bidi::PDI, "PDI");
 	}
 }
