@@ -30,6 +30,16 @@ impl NumericValue {
 	}
 }
 
+impl std::fmt::Display for NumericValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			NumericValue::None => Ok(()),
+			NumericValue::Integer(value) => write!(f, "{}", value),
+			NumericValue::Rational(a, b) => write!(f, "{}/{}", a, b),
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -91,5 +101,18 @@ mod tests {
 		check("123x", "not a valid numeric value: `123x`");
 		check("1/2x", "not a valid numeric value: `1/2x`");
 		check("1x/2", "not a valid numeric value: `1x/2`");
+	}
+
+	#[test]
+	fn supports_to_string() {
+		fn check(input: NumericValue, expected: &'static str) {
+			assert_eq!(input.to_string(), expected);
+			assert_eq!(NumericValue::parse(input.to_string()).unwrap(), input);
+		}
+		check(NumericValue::None, "");
+		check(NumericValue::Integer(123), "123");
+		check(NumericValue::Integer(-123), "-123");
+		check(NumericValue::Rational(2, 4), "2/4");
+		check(NumericValue::Rational(-3, 6), "-3/6");
 	}
 }
