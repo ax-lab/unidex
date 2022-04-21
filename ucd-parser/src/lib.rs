@@ -17,3 +17,6 @@ pub mod parse;
 
 pub mod blocks;
 pub mod unicode_data;
+
+mod category;
+pub use category::Category;

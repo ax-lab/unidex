@@ -1,3 +1,5 @@
+use super::Category;
+
 pub struct UnicodeData<'a> {
 	code: u32,
 	name: &'a str,
@@ -134,14 +136,6 @@ impl<'a> UnicodeData<'a> {
 	pub fn titlecase_mapping(&self) -> CaseMapping {
 		self.titlecase_mapping
 	}
-}
-
-/// General category for character. These are a useful breakdown into
-/// various "character types" which can be used as a default categorization
-/// in implementations.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Category {
-	LetterLowercase,
 }
 
 /// These are the categories required by the Bidirectional Behavior Algorithm
