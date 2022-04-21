@@ -145,4 +145,9 @@ mod tests {
 		assert_eq!(parse("Sk"), Category::SymbolModifier);
 		assert_eq!(parse("So"), Category::SymbolOther);
 	}
+
+	#[test]
+	fn category_from_invalid_string() {
+		assert_eq!(Category::parse("xx"), None);
+	}
 }
