@@ -44,6 +44,22 @@ impl Decomposition {
 	}
 }
 
+impl std::fmt::Display for Decomposition {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut separator = "";
+		if let Some(tag) = self.tag {
+			write!(f, "{}", tag)?;
+			separator = " ";
+		}
+
+		for it in self.codes.iter() {
+			write!(f, "{}{:04X}", separator, it)?;
+			separator = " ";
+		}
+		Ok(())
+	}
+}
+
 /// The tags supplied with certain [`Decomposition`] mappings generally indicate
 /// formatting information.
 ///
@@ -193,6 +209,35 @@ mod test_decomposition {
 	fn panics_on_invalid_code() {
 		let input = "FFFF XX FFFF";
 		Decomposition::parse(input, "some row");
+	}
+
+	#[test]
+	fn supports_to_string() {
+		fn check(input: Decomposition, expected: &'static str) {
+			assert_eq!(input.to_string(), expected);
+			assert_eq!(
+				Decomposition::parse(&input.to_string(), "some input").unwrap(),
+				input
+			);
+		}
+
+		let input = Decomposition {
+			tag: None,
+			codes: vec![0xABCD],
+		};
+		check(input, "ABCD");
+
+		let input = Decomposition {
+			tag: None,
+			codes: vec![0xABCD, 0x1234],
+		};
+		check(input, "ABCD 1234");
+
+		let input = Decomposition {
+			tag: Some(DecompositionTag::Initial),
+			codes: vec![0xABCD, 0x1234],
+		};
+		check(input, "<initial> ABCD 1234");
 	}
 }
 
