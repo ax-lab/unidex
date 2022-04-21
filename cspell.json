@@ -3,9 +3,11 @@
 	"language": "en",
 	"words": [
 		"bidi",
+		"hankaku",
 		"ignorables",
 		"Thaana",
-		"unidex"
+		"unidex",
+		"zenkaku"
 	],
 	"flagWords": [
 		"teh"
