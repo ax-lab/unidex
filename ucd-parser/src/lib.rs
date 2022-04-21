@@ -20,3 +20,6 @@ pub mod unicode_data;
 
 mod category;
 pub use category::Category;
+
+mod bidi;
+pub use bidi::Bidi;

@@ -1,4 +1,4 @@
-use super::Category;
+use super::{Bidi, Category};
 
 pub struct UnicodeData<'a> {
 	code: u32,
@@ -138,15 +138,6 @@ impl<'a> UnicodeData<'a> {
 	}
 }
 
-/// These are the categories required by the Bidirectional Behavior Algorithm
-/// in the Unicode Standard.
-///
-/// See https://www.unicode.org/reports/tr9/
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Bidi {
-	Left,
-}
-
 /// Decomposition mapping for the character.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Decomposition {
@@ -233,7 +224,7 @@ mod tests {
 			"char name",
 			Category::LetterLowercase,
 			230,
-			Bidi::Left,
+			Bidi::L,
 			Some(decomposition.clone()),
 			DecimalValue::Some(1),
 			DigitValue::Some(1),
@@ -249,7 +240,7 @@ mod tests {
 		assert_eq!(entry.name(), "char name");
 		assert_eq!(entry.category(), Category::LetterLowercase);
 		assert_eq!(entry.combining_class(), 230);
-		assert_eq!(entry.bidi(), Bidi::Left);
+		assert_eq!(entry.bidi(), Bidi::L);
 		assert_eq!(entry.decomposition(), &Some(decomposition));
 		assert_eq!(entry.decimal_value(), DecimalValue::Some(1));
 		assert_eq!(entry.digit_value(), DigitValue::Some(1));
