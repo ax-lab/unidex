@@ -1,4 +1,4 @@
-use super::{Bidi, Category};
+use super::{Bidi, Category, Decomposition};
 
 pub struct UnicodeData<'a> {
 	code: u32,
@@ -138,28 +138,6 @@ impl<'a> UnicodeData<'a> {
 	}
 }
 
-/// Decomposition mapping for the character.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Decomposition {
-	pub tag: Option<DecompositionTag>,
-	pub codes: Vec<u32>,
-}
-
-/// The tags supplied with certain [`Decomposition`] mappings generally indicate
-/// formatting information.
-///
-/// Where no such tag is given, the mapping is designated as canonical.
-///
-/// Conversely, the presence of a formatting tag also indicates that the
-/// mapping is a compatibility mapping and not a canonical mapping.
-///
-/// In the absence of other formatting information in a compatibility mapping,
-/// the tag is used to distinguish it from canonical mappings.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DecompositionTag {
-	Font,
-}
-
 /// Values for the decimal digit value property for a character.
 ///
 /// See also [`DigitValue`], [`NumericValue`].
@@ -215,6 +193,8 @@ mod tests {
 
 	#[test]
 	fn can_create_new() {
+		use crate::DecompositionTag;
+
 		let decomposition = Decomposition {
 			tag: Some(DecompositionTag::Font),
 			codes: vec![10, 20, 30],
