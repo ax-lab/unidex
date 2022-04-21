@@ -109,7 +109,7 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn category_from_string() {
+	fn parses_from_string() {
 		fn parse(input: &'static str) -> Category {
 			Category::parse(input).unwrap()
 		}
@@ -147,7 +147,7 @@ mod tests {
 	}
 
 	#[test]
-	fn category_from_invalid_string() {
+	fn parse_from_invalid_string_is_none() {
 		assert_eq!(Category::parse("xx"), None);
 	}
 }

@@ -18,8 +18,5 @@ pub mod parse;
 pub mod blocks;
 pub mod unicode_data;
 
-mod category;
-pub use category::Category;
-
-mod bidi;
-pub use bidi::Bidi;
+mod data;
+pub use data::*;
