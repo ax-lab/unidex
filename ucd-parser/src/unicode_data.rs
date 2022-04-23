@@ -138,6 +138,39 @@ impl<'a> UnicodeData<'a> {
 	}
 }
 
+impl<'a> std::fmt::Display for UnicodeData<'a> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{:04X}", self.code)?;
+		write!(f, ";{}", self.name)?;
+		write!(f, ";{}", self.category)?;
+		write!(f, ";{}", self.combining_class)?;
+		write!(f, ";{}", self.bidi)?;
+		if let Some(decomposition) = &self.decomposition {
+			write!(f, ";{}", decomposition)?;
+		} else {
+			write!(f, ";")?;
+		}
+		if let DecimalValue::Some(decimal_value) = self.decimal_value {
+			write!(f, ";{}", decimal_value)?;
+		} else {
+			write!(f, ";")?;
+		}
+		if let DigitValue::Some(digit_value) = self.digit_value {
+			write!(f, ";{}", digit_value)?;
+		} else {
+			write!(f, ";")?;
+		}
+		write!(f, ";{}", self.numeric_value)?;
+		write!(f, ";{}", self.mirrored)?;
+		write!(f, ";{}", self.unicode_old_name)?;
+		write!(f, ";{}", self.iso_10646_comment)?;
+		write!(f, ";{}", self.uppercase_mapping)?;
+		write!(f, ";{}", self.lowercase_mapping)?;
+		write!(f, ";{}", self.titlecase_mapping)?;
+		Ok(())
+	}
+}
+
 /// Values for the decimal digit value property for a character.
 ///
 /// See also [`DigitValue`], [`NumericValue`].
@@ -165,6 +198,19 @@ pub enum Mirrored {
 	Yes,
 }
 
+impl std::fmt::Display for Mirrored {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Mirrored::No => "N",
+				Mirrored::Yes => "Y",
+			}
+		)
+	}
+}
+
 /// If a character is part of an alphabet with case distinctions, and has a
 /// case equivalent, this will be the value.
 ///
@@ -177,14 +223,22 @@ pub enum CaseMapping {
 	Some(u32),
 }
 
+impl std::fmt::Display for CaseMapping {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			CaseMapping::Some(value) => write!(f, "{:04X}", value),
+			CaseMapping::None => write!(f, ""),
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::DecompositionTag;
 
 	#[test]
 	fn can_create_new() {
-		use crate::DecompositionTag;
-
 		let decomposition = Decomposition {
 			tag: Some(DecompositionTag::Font),
 			codes: vec![10, 20, 30],
@@ -221,5 +275,52 @@ mod tests {
 		assert_eq!(entry.uppercase_mapping(), CaseMapping::Some(1));
 		assert_eq!(entry.lowercase_mapping(), CaseMapping::Some(2));
 		assert_eq!(entry.titlecase_mapping(), CaseMapping::None);
+	}
+
+	#[test]
+	fn supports_to_string() {
+		let entry = UnicodeData::new(
+			0x12AB,
+			"some name",
+			Category::LetterUppercase,
+			230,
+			Bidi::L,
+			Some(Decomposition {
+				tag: Some(DecompositionTag::Font),
+				codes: vec![0x10, 0x20, 0x30],
+			}),
+			DecimalValue::Some(1),
+			DigitValue::Some(2),
+			NumericValue::Rational(1, 5),
+			Mirrored::Yes,
+			"old name",
+			"iso name",
+			CaseMapping::Some(0xA1),
+			CaseMapping::Some(0xB2),
+			CaseMapping::Some(0xC3),
+		);
+		assert_eq!(
+			entry.to_string(),
+			"12AB;some name;Lu;230;L;<font> 0010 0020 0030;1;2;1/5;Y;old name;iso name;00A1;00B2;00C3"
+		);
+
+		let entry = UnicodeData::new(
+			0xFF,
+			"other name",
+			Category::MarkEnclosing,
+			0,
+			Bidi::LRE,
+			None,
+			DecimalValue::None,
+			DigitValue::None,
+			NumericValue::None,
+			Mirrored::No,
+			"old",
+			"",
+			CaseMapping::None,
+			CaseMapping::None,
+			CaseMapping::None,
+		);
+		assert_eq!(entry.to_string(), "00FF;other name;Me;0;LRE;;;;;N;old;;;;");
 	}
 }
