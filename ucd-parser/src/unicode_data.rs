@@ -1,5 +1,6 @@
 use super::data::*;
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct UnicodeData<'a> {
 	/// Codepoint value. Note that for codepoint ranges this can represent the
 	/// start or end of a range of codepoints.
@@ -13,7 +14,7 @@ pub struct UnicodeData<'a> {
 
 	/// The classes used for the Canonical Ordering Algorithm in the Unicode
 	/// standard.
-	pub combining_class: u8,
+	pub combining_class: u32,
 
 	/// Bidirectional category for this character.
 	pub bidi: Bidi,
@@ -52,6 +53,114 @@ pub struct UnicodeData<'a> {
 
 	/// Titlecase mapping for this character.
 	pub titlecase_mapping: CaseMapping,
+}
+
+impl<'a> UnicodeData<'a> {
+	pub fn parse(input: &'a str) -> Self {
+		let err = |msg: &str| format!("parsing unicode data: {} (input: `{}`)", msg, input);
+		let err_field = |field: &str, value: &str| err(&format!("invalid {} `{}`", field, value));
+		if input.len() == 0 {
+			panic!("{}", err("empty input"));
+		}
+
+		let mut fields = input.split(';');
+		let mut next_field = || fields.next().expect(&err("invalid row format"));
+
+		let code = next_field();
+		let name = next_field();
+		let category = next_field();
+		let combining_class = next_field();
+		let bidi = next_field();
+		let decomposition = next_field();
+		let decimal_value = next_field();
+		let digit_value = next_field();
+		let numeric_value = next_field();
+		let mirrored = next_field();
+		let unicode_old_name = next_field();
+		let iso_10646_comment = next_field();
+		let uppercase_mapping = next_field();
+		let lowercase_mapping = next_field();
+		let titlecase_mapping = next_field();
+
+		if fields.count() != 0 {
+			panic!("{}", err("invalid row format"));
+		}
+
+		let code = u32::from_str_radix(code, 16).expect(&err_field("code", code));
+
+		if name.trim().len() == 0 {
+			panic!("{}", err("empty name"));
+		}
+
+		let category = Category::parse(category).expect(&err_field("category", category));
+
+		let parse_u32 =
+			|name: &str, value: &str| value.parse::<u32>().expect(&err_field(name, value));
+
+		let combining_class = parse_u32("combining class", combining_class);
+
+		let bidi = Bidi::parse(bidi).expect(&err_field("bidirectional category", bidi));
+
+		let decomposition = if decomposition.len() > 0 {
+			Some(
+				Decomposition::parse(decomposition)
+					.expect(&err_field("decomposition", decomposition)),
+			)
+		} else {
+			None
+		};
+
+		let decimal_value = if decimal_value.len() > 0 {
+			DecimalValue::Some(parse_u32("decimal value", decimal_value))
+		} else {
+			DecimalValue::None
+		};
+
+		let digit_value = if digit_value.len() > 0 {
+			DigitValue::Some(parse_u32("digit value", digit_value))
+		} else {
+			DigitValue::None
+		};
+
+		let numeric_value =
+			NumericValue::parse(numeric_value).expect(&err_field("numeric value", numeric_value));
+
+		let mirrored = match mirrored {
+			"Y" => Mirrored::Yes,
+			"N" => Mirrored::No,
+			_ => panic!("{}", err_field("mirrored value", mirrored)),
+		};
+
+		let parse_case = |name: &str, input: &str| {
+			if input.len() > 0 {
+				CaseMapping::Some(u32::from_str_radix(input, 16).expect(&err_field(name, input)))
+			} else {
+				CaseMapping::None
+			}
+		};
+
+		let uppercase_mapping = parse_case("uppercase mapping", uppercase_mapping);
+		let lowercase_mapping = parse_case("lowercase mapping", lowercase_mapping);
+		let titlecase_mapping = parse_case("titlecase mapping", titlecase_mapping);
+
+		UnicodeData {
+			code,
+			name,
+			category,
+			combining_class,
+			bidi,
+			decomposition,
+			decimal_value,
+			digit_value,
+			numeric_value,
+			mirrored,
+			unicode_old_name,
+			iso_10646_comment,
+			uppercase_mapping,
+			lowercase_mapping,
+			titlecase_mapping,
+		}
+	}
 }
 
 impl<'a> std::fmt::Display for UnicodeData<'a> {
@@ -238,5 +347,146 @@ mod tests {
 			titlecase_mapping: CaseMapping::None,
 		};
 		assert_eq!(entry.to_string(), "00FF;other name;Me;0;LRE;;;;;N;old;;;;");
+	}
+
+	#[test]
+	fn parses_from_string() {
+		let data = UnicodeData::parse("0;name;Ll;0;L;;;;;N;;;;;");
+		assert_eq!(
+			data,
+			UnicodeData {
+				code: 0,
+				name: "name",
+				category: Category::LetterLowercase,
+				combining_class: 0,
+				bidi: Bidi::L,
+				decomposition: None,
+				decimal_value: DecimalValue::None,
+				digit_value: DigitValue::None,
+				numeric_value: NumericValue::None,
+				mirrored: Mirrored::No,
+				unicode_old_name: "",
+				iso_10646_comment: "",
+				uppercase_mapping: CaseMapping::None,
+				lowercase_mapping: CaseMapping::None,
+				titlecase_mapping: CaseMapping::None,
+			}
+		);
+
+		let data = UnicodeData::parse("12AB;char name;Nd;220;NSM;1234;10;20;30;Y;old;iso;AA;BB;CC");
+		assert_eq!(
+			data,
+			UnicodeData {
+				code: 0x12AB,
+				name: "char name",
+				category: Category::NumberDecimalDigit,
+				combining_class: 220,
+				bidi: Bidi::NSM,
+				decomposition: Some(Decomposition {
+					tag: None,
+					codes: vec![0x1234]
+				}),
+				decimal_value: DecimalValue::Some(10),
+				digit_value: DigitValue::Some(20),
+				numeric_value: NumericValue::Integer(30),
+				mirrored: Mirrored::Yes,
+				unicode_old_name: "old",
+				iso_10646_comment: "iso",
+				uppercase_mapping: CaseMapping::Some(0xAA),
+				lowercase_mapping: CaseMapping::Some(0xBB),
+				titlecase_mapping: CaseMapping::Some(0xCC),
+			}
+		);
+	}
+
+	macro_rules! check_parsing {
+		(input $input:literal error $error:literal) => {
+			assert_panic!($error in UnicodeData::parse($input));
+			assert_panic!($input in UnicodeData::parse($input));
+			assert_panic!("parsing unicode data:" in UnicodeData::parse($input));
+		};
+	}
+
+	#[test]
+	fn parse_panics_on_invalid_input() {
+		check_parsing!(
+			input ""
+			error "empty input"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;N;;;0;0" // missing a field
+			error "invalid row format"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;N;;;0;0;0;" // additional field
+			error "invalid row format"
+		);
+
+		check_parsing!(
+			input "x1;name;Ll;0;L;;0;0;0;N;;;0;0;0"
+			error "invalid code `x1`"
+		);
+
+		check_parsing!(
+			input "0;;Ll;0;L;;0;0;0;N;;;0;0;0"
+			error "empty name"
+		);
+
+		check_parsing!(
+			input "0;name;x2;0;L;;0;0;0;N;;;0;0;0"
+			error "invalid category `x2`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;x3;L;;0;0;0;N;;;0;0;0"
+			error "invalid combining class `x3`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;x4;;0;0;0;N;;;0;0;0"
+			error "invalid bidirectional category `x4`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;x5;0;0;0;N;;;0;0;0"
+			error "invalid decomposition `x5`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;x6;0;0;N;;;0;0;0"
+			error "invalid decimal value `x6`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;x7;0;N;;;0;0;0"
+			error "invalid digit value `x7`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;x8;N;;;0;0;0"
+			error "invalid numeric value `x8`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;X;;;0;0;0"
+			error "invalid mirrored value `X`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;N;;;x9;0;0"
+			error "invalid uppercase mapping `x9`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;N;;;0;xA;0"
+			error "invalid lowercase mapping `xA`"
+		);
+
+		check_parsing!(
+			input "0;name;Ll;0;L;;0;0;0;N;;;0;0;xB"
+			error "invalid titlecase mapping `xB`"
+		);
 	}
 }

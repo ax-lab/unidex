@@ -6,11 +6,8 @@ pub struct Decomposition {
 }
 
 impl Decomposition {
-	pub fn parse<T: AsRef<str>>(input: T, message: &str) -> Option<Self> {
+	pub fn parse<T: AsRef<str>>(input: T) -> Result<Self, String> {
 		let input = input.as_ref();
-		if input.len() == 0 {
-			return None;
-		}
 
 		let mut output = Decomposition {
 			tag: None,
@@ -21,26 +18,15 @@ impl Decomposition {
 				output.tag = DecompositionTag::parse(value);
 				output
 					.tag
-					.ok_or_else(|| {
-						format!(
-							"parsing {}: decomposition tag `{}` is not valid",
-							message, value
-						)
-					})
-					.unwrap();
+					.ok_or_else(|| format!("decomposition tag `{}` is not valid", value))?;
 			} else {
-				let code = u32::from_str_radix(value, 16)
-					.map_err(|err| {
-						format!(
-							"parsing {}: decomposition code `{}` is not valid -- {}",
-							message, value, err
-						)
-					})
-					.unwrap();
+				let code = u32::from_str_radix(value, 16).map_err(|err| {
+					format!("decomposition code `{}` is not valid -- {}", value, err)
+				})?;
 				output.codes.push(code);
 			}
 		}
-		Some(output)
+		Ok(output)
 	}
 }
 
@@ -160,15 +146,10 @@ mod test_decomposition {
 	use super::*;
 
 	#[test]
-	fn parses_empty_string_as_none() {
-		assert_eq!(Decomposition::parse("", "some row"), None);
-	}
-
-	#[test]
 	fn parses_without_a_tag() {
 		let input = "309D 3099";
 		assert_eq!(
-			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition::parse(input).unwrap(),
 			Decomposition {
 				tag: None,
 				codes: vec![0x309D, 0x3099]
@@ -180,7 +161,7 @@ mod test_decomposition {
 	fn parses_with_a_tag() {
 		let input = "<vertical> 3088 308A";
 		assert_eq!(
-			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition::parse(input).unwrap(),
 			Decomposition {
 				tag: Some(DecompositionTag::Vertical),
 				codes: vec![0x3088, 0x308A]
@@ -189,7 +170,7 @@ mod test_decomposition {
 
 		let input = "<compat> 1100";
 		assert_eq!(
-			Decomposition::parse(input, "some row").unwrap(),
+			Decomposition::parse(input).unwrap(),
 			Decomposition {
 				tag: Some(DecompositionTag::Compat),
 				codes: vec![0x1100]
@@ -198,27 +179,26 @@ mod test_decomposition {
 	}
 
 	#[test]
-	#[should_panic = "parsing some row: decomposition tag `<xx>` is not valid"]
-	fn panics_on_invalid_tag() {
+	fn returns_error_on_invalid_tag() {
 		let input = "<xx> FFFF";
-		Decomposition::parse(input, "some row");
+		Decomposition::parse(input)
+			.unwrap_err()
+			.contains("decomposition tag `<xx>` is not valid");
 	}
 
 	#[test]
-	#[should_panic = "parsing some row: decomposition code `XX` is not valid"]
-	fn panics_on_invalid_code() {
+	fn returns_error_on_invalid_code() {
 		let input = "FFFF XX FFFF";
-		Decomposition::parse(input, "some row");
+		Decomposition::parse(input)
+			.unwrap_err()
+			.contains("decomposition code `XX` is not valid");
 	}
 
 	#[test]
 	fn supports_to_string() {
 		fn check(input: Decomposition, expected: &'static str) {
 			assert_eq!(input.to_string(), expected);
-			assert_eq!(
-				Decomposition::parse(&input.to_string(), "some input").unwrap(),
-				input
-			);
+			assert_eq!(Decomposition::parse(&input.to_string()).unwrap(), input);
 		}
 
 		let input = Decomposition {
