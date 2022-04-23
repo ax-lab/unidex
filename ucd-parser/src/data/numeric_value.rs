@@ -4,7 +4,7 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NumericValue {
 	None,
-	Integer(i32),
+	Integer(i64),
 	Rational(i32, i32),
 }
 
@@ -24,7 +24,7 @@ impl NumericValue {
 			let b = b.parse::<i32>().map_err(format_error)?;
 			Ok(NumericValue::Rational(a, b))
 		} else {
-			let value = input.parse::<i32>().map_err(format_error)?;
+			let value = input.parse::<i64>().map_err(format_error)?;
 			Ok(NumericValue::Integer(value))
 		}
 	}

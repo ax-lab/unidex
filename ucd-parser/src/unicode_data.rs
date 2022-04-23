@@ -489,4 +489,26 @@ mod tests {
 			error "invalid titlecase mapping `xB`"
 		);
 	}
+
+	#[test]
+	fn can_load_from_ucd() {
+		let source = include_ucd!("UnicodeData.txt");
+		let source = source.lines().enumerate();
+
+		let mut has_entries = false;
+		for (n, input) in source {
+			has_entries = true;
+
+			let parsed = UnicodeData::parse(input);
+			let output = parsed.to_string();
+			assert_eq!(
+				output,
+				input,
+				"line {}: parsed output does not match input",
+				n + 1
+			);
+		}
+
+		assert!(has_entries);
+	}
 }
