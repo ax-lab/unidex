@@ -13,13 +13,20 @@ use crate::{
 /// # use ucd_parser::blocks::Block;
 /// let blocks = Block::list();
 /// for block in blocks {
-///     println!("{}: {:?}", block.name(), block.range());
+///     println!("{}: {:?}", block.name, block.range);
 /// }
 /// ```
 #[derive(Debug)]
 pub struct Block<'a> {
-	range: RangeInclusive<u32>,
-	name: &'a str,
+	/// Inclusive range of codepoints in this block.
+	pub range: RangeInclusive<u32>,
+
+	/// Name for the block.
+	///
+	/// When comparing block names, casing, whitespace, hyphens, and underbars
+	/// are ignored. For example, "Latin Extended-A" and "latin extended a" are
+	/// equivalent.
+	pub name: &'a str,
 }
 
 impl<'a> Block<'a> {
@@ -37,20 +44,6 @@ impl<'a> Block<'a> {
 
 	pub fn new(range: RangeInclusive<u32>, name: &'a str) -> Self {
 		Block { range, name }
-	}
-
-	/// Inclusive range of codepoints in this block.
-	pub fn range(&self) -> RangeInclusive<u32> {
-		self.range.clone()
-	}
-
-	/// Name for the block.
-	///
-	/// When comparing block names, casing, whitespace, hyphens, and underbars
-	/// are ignored. For example, "Latin Extended-A" and "latin extended a" are
-	/// equivalent.
-	pub fn name(&self) -> &str {
-		self.name
 	}
 
 	pub fn parse(input: &'a str) -> Result<Self, String> {
@@ -93,13 +86,13 @@ mod tests {
 	fn supports_parsing_from_string() {
 		let input = "0001..00FF; test block";
 		let block = Block::parse(input).unwrap();
-		assert_eq!(block.range(), 1..=255);
-		assert_eq!(block.name(), "test block");
+		assert_eq!(block.range, 1..=255);
+		assert_eq!(block.name, "test block");
 
 		let input = "0000..FCFC; other block";
 		let block = Block::parse(input).unwrap();
-		assert_eq!(block.range(), 0..=0xFCFC);
-		assert_eq!(block.name(), "other block");
+		assert_eq!(block.range, 0..=0xFCFC);
+		assert_eq!(block.name, "other block");
 	}
 
 	#[test]
