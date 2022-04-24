@@ -16,6 +16,7 @@ macro_rules! include_ucd {
 #[derive(Clone, Copy)]
 pub enum InputFile {
 	Blocks,
+	UnicodeData,
 }
 
 /// Input wrapper providing support for reading data files from the UCD data.
@@ -26,6 +27,7 @@ impl Input {
 	pub fn get(file: InputFile) -> Self {
 		match file {
 			InputFile::Blocks => include_ucd!("Blocks.txt"),
+			InputFile::UnicodeData => include_ucd!("UnicodeData.txt"),
 		}
 	}
 

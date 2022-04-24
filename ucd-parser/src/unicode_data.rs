@@ -1,5 +1,8 @@
+use once_cell::sync::Lazy;
+
 use super::data::*;
-use super::parse::parse_code;
+use super::input::*;
+use super::parse::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnicodeData<'a> {
@@ -57,6 +60,18 @@ pub struct UnicodeData<'a> {
 }
 
 impl<'a> UnicodeData<'a> {
+	/// List of data rows from the UCD data. Lazy-loaded from `UnicodeData.txt`.
+	pub fn list() -> &'static [UnicodeData<'static>] {
+		static ROWS: Lazy<Box<[UnicodeData]>> = Lazy::new(|| {
+			let input = Input::get(InputFile::UnicodeData);
+			let lines = input.lines();
+			let rows = lines.map(|x| UnicodeData::parse(x).unwrap());
+			let rows = rows.collect::<Vec<_>>();
+			rows.into_boxed_slice()
+		});
+		&ROWS
+	}
+
 	pub fn parse(input: &'a str) -> Result<Self, String> {
 		//----[ parsing helpers ]---------------------------------------------//
 
@@ -538,7 +553,7 @@ mod tests {
 	}
 
 	#[test]
-	fn can_load_from_ucd() {
+	fn parses_from_ucd() {
 		let source = include_ucd!("UnicodeData.txt");
 		let source = source.lines().enumerate();
 
@@ -557,5 +572,28 @@ mod tests {
 		}
 
 		assert!(has_entries);
+	}
+
+	#[test]
+	fn can_load_from_ucd() {
+		let source = include_ucd!("UnicodeData.txt");
+		let source = source.lines().collect::<Vec<_>>();
+		assert!(source.len() > 0);
+
+		let rows = UnicodeData::list();
+
+		assert!(rows.len() > 0);
+		for (n, row) in rows.into_iter().enumerate() {
+			let row_as_text = row.to_string();
+			let source = source[n];
+			assert_eq!(
+				row_as_text,
+				source,
+				"at line {}: expected `{}`, but it was `{}`",
+				n + 1,
+				source,
+				row_as_text
+			);
+		}
 	}
 }
