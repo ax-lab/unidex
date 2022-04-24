@@ -2,7 +2,10 @@ use std::ops::RangeInclusive;
 
 use once_cell::sync::Lazy;
 
-use crate::input::{Input, InputFile};
+use crate::{
+	input::{Input, InputFile},
+	parse::parse_range,
+};
 
 /// Block of codepoints from the Unicode Character Database.
 ///
@@ -13,6 +16,7 @@ use crate::input::{Input, InputFile};
 ///     println!("{}: {:?}", block.name(), block.range());
 /// }
 /// ```
+#[derive(Debug)]
 pub struct Block<'a> {
 	range: RangeInclusive<u32>,
 	name: &'a str,
@@ -24,7 +28,7 @@ impl<'a> Block<'a> {
 		static BLOCKS: Lazy<Box<[Block]>> = Lazy::new(|| {
 			let input = Input::get(InputFile::Blocks);
 			let lines = input.lines();
-			let blocks = lines.map(|x| Block::parse(x));
+			let blocks = lines.map(|x| Block::parse(x).unwrap());
 			let blocks = blocks.collect::<Vec<_>>();
 			blocks.into_boxed_slice()
 		});
@@ -49,11 +53,14 @@ impl<'a> Block<'a> {
 		self.name
 	}
 
-	pub fn parse(s: &'a str) -> Self {
-		let semicolon = s.find(";").expect("parsing block: missing `;`");
-		let (range, name) = (&s[..semicolon], &s[semicolon + 1..].trim());
-		let (start, end) = parse_range!(range, "block: range");
-		Block::new(start..=end, name)
+	pub fn parse(input: &'a str) -> Result<Self, String> {
+		let semicolon = input
+			.find(";")
+			.ok_or_else(|| format!("`{}` block is missing `;`", input))?;
+		let (range, name) = (&input[..semicolon], &input[semicolon + 1..].trim());
+		let (start, end) =
+			parse_range(range).map_err(|err| format!("block {} -- in `{}`", err, input))?;
+		Ok(Block::new(start..=end, name))
 	}
 }
 
@@ -85,14 +92,26 @@ mod tests {
 	#[test]
 	fn supports_parsing_from_string() {
 		let input = "0001..00FF; test block";
-		let block = Block::parse(input);
+		let block = Block::parse(input).unwrap();
 		assert_eq!(block.range(), 1..=255);
 		assert_eq!(block.name(), "test block");
 
 		let input = "0000..FCFC; other block";
-		let block = Block::parse(input);
+		let block = Block::parse(input).unwrap();
 		assert_eq!(block.range(), 0..=0xFCFC);
 		assert_eq!(block.name(), "other block");
+	}
+
+	#[test]
+	fn parsing_invalid_block_returns_error() {
+		let input = "xx";
+		let error = Block::parse(input).unwrap_err();
+		assert!(error.contains("`xx` block is missing `;`"));
+
+		let input = "xx..00FF; some name";
+		let error = Block::parse(input).unwrap_err();
+		assert!(error.contains("block range start `xx` is not a valid code"));
+		assert!(error.contains("-- in `xx..00FF; some name`"))
 	}
 
 	#[test]
