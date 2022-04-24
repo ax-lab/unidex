@@ -2,7 +2,12 @@
 	"version": "0.2",
 	"language": "en",
 	"words": [
-		"unidex"
+		"bidi",
+		"hankaku",
+		"ignorables",
+		"Thaana",
+		"unidex",
+		"zenkaku"
 	],
 	"flagWords": [
 		"teh"
@@ -13,6 +18,7 @@
 		"vendor-data/ucd/**"
 	],
 	"ignoreRegExpList": [
-		"`[^\\s]+`"
+		"`[^\\s]+`",
+		"\\b[0-9A-F]{4,6}\\b"
 	]
 }

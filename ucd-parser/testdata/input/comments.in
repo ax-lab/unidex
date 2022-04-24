@@ -1,0 +1,8 @@
+# comment
+nc 1
+# comment
+nc 2
+	# indented comment
+	# indented comment
+nc 3
+nc 4 # in-line comment
