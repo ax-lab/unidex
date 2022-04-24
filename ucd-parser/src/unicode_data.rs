@@ -1,4 +1,5 @@
 use super::data::*;
+use super::parse::parse_code;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnicodeData<'a> {
@@ -56,94 +57,106 @@ pub struct UnicodeData<'a> {
 }
 
 impl<'a> UnicodeData<'a> {
-	pub fn parse(input: &'a str) -> Self {
-		let err = |msg: &str| format!("parsing unicode data: {} (input: `{}`)", msg, input);
-		let err_field = |field: &str, value: &str| err(&format!("invalid {} `{}`", field, value));
+	pub fn parse(input: &'a str) -> Result<Self, String> {
+		let error_message =
+			|msg: &str| format!("parsing unicode data: {} -- row: `{}`", msg, input);
+
 		if input.len() == 0 {
-			panic!("{}", err("empty input"));
+			return Err(error_message("empty input"));
 		}
 
 		let mut fields = input.split(';');
-		let mut next_field = || fields.next().expect(&err("invalid row format"));
+		let mut next_field = || {
+			fields
+				.next()
+				.ok_or_else(|| error_message("invalid row format"))
+		};
 
-		let code = next_field();
-		let name = next_field();
-		let category = next_field();
-		let combining_class = next_field();
-		let bidi = next_field();
-		let decomposition = next_field();
-		let decimal_value = next_field();
-		let digit_value = next_field();
-		let numeric_value = next_field();
-		let mirrored = next_field();
-		let unicode_old_name = next_field();
-		let iso_10646_comment = next_field();
-		let uppercase_mapping = next_field();
-		let lowercase_mapping = next_field();
-		let titlecase_mapping = next_field();
+		let code = next_field()?;
+		let name = next_field()?;
+		let category = next_field()?;
+		let combining_class = next_field()?;
+		let bidi = next_field()?;
+		let decomposition = next_field()?;
+		let decimal_value = next_field()?;
+		let digit_value = next_field()?;
+		let numeric_value = next_field()?;
+		let mirrored = next_field()?;
+		let unicode_old_name = next_field()?;
+		let iso_10646_comment = next_field()?;
+		let uppercase_mapping = next_field()?;
+		let lowercase_mapping = next_field()?;
+		let titlecase_mapping = next_field()?;
 
 		if fields.count() != 0 {
-			panic!("{}", err("invalid row format"));
+			return Err(error_message("invalid row format"));
 		}
 
-		let code = u32::from_str_radix(code, 16).expect(&err_field("code", code));
+		let code = parse_code(code).map_err(|err| error_message(&err))?;
 
 		if name.trim().len() == 0 {
-			panic!("{}", err("empty name"));
+			return Err(error_message("empty name"));
 		}
 
-		let category = Category::parse(category).expect(&err_field("category", category));
+		let field_error = |field: &str, value: &str| {
+			let message = format!("invalid {} `{}`", field, value);
+			error_message(&message)
+		};
+
+		let category =
+			Category::parse(category).ok_or_else(|| field_error("category", category))?;
 
 		let parse_u32 =
-			|name: &str, value: &str| value.parse::<u32>().expect(&err_field(name, value));
+			|name: &str, value: &str| value.parse::<u32>().map_err(|_| field_error(name, value));
 
-		let combining_class = parse_u32("combining class", combining_class);
+		let combining_class = parse_u32("combining class", combining_class)?;
 
-		let bidi = Bidi::parse(bidi).expect(&err_field("bidirectional category", bidi));
+		let bidi = Bidi::parse(bidi).ok_or_else(|| field_error("bidirectional category", bidi))?;
 
 		let decomposition = if decomposition.len() > 0 {
-			Some(
-				Decomposition::parse(decomposition)
-					.expect(&err_field("decomposition", decomposition)),
-			)
+			Some(Decomposition::parse(decomposition).map_err(|err| {
+				format!("{} ({})", field_error("decomposition", decomposition), err)
+			})?)
 		} else {
 			None
 		};
 
 		let decimal_value = if decimal_value.len() > 0 {
-			DecimalValue::Some(parse_u32("decimal value", decimal_value))
+			DecimalValue::Some(parse_u32("decimal value", decimal_value)?)
 		} else {
 			DecimalValue::None
 		};
 
 		let digit_value = if digit_value.len() > 0 {
-			DigitValue::Some(parse_u32("digit value", digit_value))
+			DigitValue::Some(parse_u32("digit value", digit_value)?)
 		} else {
 			DigitValue::None
 		};
 
-		let numeric_value =
-			NumericValue::parse(numeric_value).expect(&err_field("numeric value", numeric_value));
+		let numeric_value = NumericValue::parse(numeric_value)
+			.map_err(|err| format!("{} ({})", field_error("numeric value", numeric_value), err))?;
 
 		let mirrored = match mirrored {
 			"Y" => Mirrored::Yes,
 			"N" => Mirrored::No,
-			_ => panic!("{}", err_field("mirrored value", mirrored)),
+			_ => return Err(field_error("mirrored value", mirrored)),
 		};
 
-		let parse_case = |name: &str, input: &str| {
+		let parse_case = |name: &str, input: &str| -> Result<_, String> {
 			if input.len() > 0 {
-				CaseMapping::Some(u32::from_str_radix(input, 16).expect(&err_field(name, input)))
+				Ok(CaseMapping::Some(
+					u32::from_str_radix(input, 16).map_err(|_| field_error(name, input))?,
+				))
 			} else {
-				CaseMapping::None
+				Ok(CaseMapping::None)
 			}
 		};
 
-		let uppercase_mapping = parse_case("uppercase mapping", uppercase_mapping);
-		let lowercase_mapping = parse_case("lowercase mapping", lowercase_mapping);
-		let titlecase_mapping = parse_case("titlecase mapping", titlecase_mapping);
+		let uppercase_mapping = parse_case("uppercase mapping", uppercase_mapping)?;
+		let lowercase_mapping = parse_case("lowercase mapping", lowercase_mapping)?;
+		let titlecase_mapping = parse_case("titlecase mapping", titlecase_mapping)?;
 
-		UnicodeData {
+		let output = UnicodeData {
 			code,
 			name,
 			category,
@@ -159,7 +172,8 @@ impl<'a> UnicodeData<'a> {
 			uppercase_mapping,
 			lowercase_mapping,
 			titlecase_mapping,
-		}
+		};
+		Ok(output)
 	}
 }
 
@@ -351,7 +365,7 @@ mod tests {
 
 	#[test]
 	fn parses_from_string() {
-		let data = UnicodeData::parse("0;name;Ll;0;L;;;;;N;;;;;");
+		let data = UnicodeData::parse("0;name;Ll;0;L;;;;;N;;;;;").unwrap();
 		assert_eq!(
 			data,
 			UnicodeData {
@@ -373,7 +387,8 @@ mod tests {
 			}
 		);
 
-		let data = UnicodeData::parse("12AB;char name;Nd;220;NSM;1234;10;20;30;Y;old;iso;AA;BB;CC");
+		let data = UnicodeData::parse("12AB;char name;Nd;220;NSM;1234;10;20;30;Y;old;iso;AA;BB;CC")
+			.unwrap();
 		assert_eq!(
 			data,
 			UnicodeData {
@@ -401,9 +416,30 @@ mod tests {
 
 	macro_rules! check_parsing {
 		(input $input:literal error $error:literal) => {
-			assert_panic!($error in UnicodeData::parse($input));
-			assert_panic!($input in UnicodeData::parse($input));
-			assert_panic!("parsing unicode data:" in UnicodeData::parse($input));
+			let err = UnicodeData::parse($input).expect_err(concat!(
+				"expected error -- in `",
+				$input,
+				"`"
+			));
+			assert!(
+				err.contains($error),
+				"expected error `{}`, but it was `{}` -- in `{}`",
+				$error,
+				err,
+				$input
+			);
+			assert!(
+				err.contains($input),
+				"expected error to contain input, but it was `{}` -- in `{}`",
+				$error,
+				$input
+			);
+			assert!(
+				err.contains("parsing unicode data"),
+				"expected error to `parsing unicode data`, but it was `{}` -- in `{}`",
+				$error,
+				$input
+			);
 		};
 	}
 
@@ -426,7 +462,7 @@ mod tests {
 
 		check_parsing!(
 			input "x1;name;Ll;0;L;;0;0;0;N;;;0;0;0"
-			error "invalid code `x1`"
+			error "`x1` is not a valid code"
 		);
 
 		check_parsing!(
@@ -499,7 +535,7 @@ mod tests {
 		for (n, input) in source {
 			has_entries = true;
 
-			let parsed = UnicodeData::parse(input);
+			let parsed = UnicodeData::parse(input).unwrap();
 			let output = parsed.to_string();
 			assert_eq!(
 				output,
