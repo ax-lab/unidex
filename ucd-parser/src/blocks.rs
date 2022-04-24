@@ -10,7 +10,7 @@ use crate::{
 /// Block of codepoints from the Unicode Character Database.
 ///
 /// ```
-/// # use ucd_parser::blocks::Block;
+/// # use ucd_parser::Block;
 /// let blocks = Block::list();
 /// for block in blocks {
 ///     println!("{}: {:?}", block.name, block.range);

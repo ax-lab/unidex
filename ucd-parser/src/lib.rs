@@ -18,8 +18,11 @@ pub mod input;
 #[macro_use]
 pub mod parse;
 
-pub mod blocks;
-pub mod unicode_data;
+mod blocks;
+pub use blocks::*;
+
+mod unicode_data;
+pub use unicode_data::*;
 
 mod data;
 pub use data::*;

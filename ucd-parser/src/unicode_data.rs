@@ -13,7 +13,7 @@ use super::parse::*;
 /// values (which are all sequential and assigned).
 ///
 /// ```
-/// # use ucd_parser::unicode_data::UnicodeData;
+/// # use ucd_parser::UnicodeData;
 /// let rows = UnicodeData::list();
 /// for row in rows {
 ///     println!("{}: {} ({})", row.code, row.name, row.category);
