@@ -4,6 +4,21 @@ use super::data::*;
 use super::input::*;
 use super::parse::*;
 
+/// Represents the data for one encoded character in the Unicode Standard. Every
+/// encoded character has a data entry, with the exception of certain special
+/// ranges.
+///
+/// There are special ranges of characters that are represented only by their
+/// start and end characters, since the properties are uniform, except for code
+/// values (which are all sequential and assigned).
+///
+/// ```
+/// # use ucd_parser::unicode_data::UnicodeData;
+/// let rows = UnicodeData::list();
+/// for row in rows {
+///     println!("{}: {} ({})", row.code, row.name, row.category);
+/// }
+/// ```
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnicodeData<'a> {
 	/// Codepoint value. Note that for codepoint ranges this can represent the
