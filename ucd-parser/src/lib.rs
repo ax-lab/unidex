@@ -10,9 +10,6 @@
 //! panics.
 
 #[macro_use]
-pub mod test_util;
-
-#[macro_use]
 pub mod input;
 
 #[macro_use]
