@@ -58,8 +58,23 @@ pub struct UnicodeData<'a> {
 
 impl<'a> UnicodeData<'a> {
 	pub fn parse(input: &'a str) -> Result<Self, String> {
+		//----[ parsing helpers ]---------------------------------------------//
+
 		let error_message =
 			|msg: &str| format!("parsing unicode data: {} -- row: `{}`", msg, input);
+
+		let field_error = |field: &str, value: &str| {
+			let message = format!("invalid {} `{}`", field, value);
+			error_message(&message)
+		};
+
+		let parse_u32 = |field_name: &str, value: &str| {
+			value
+				.parse::<u32>()
+				.map_err(|_| field_error(field_name, value))
+		};
+
+		//----[ row parsing ]-------------------------------------------------//
 
 		if input.len() == 0 {
 			return Err(error_message("empty input"));
@@ -92,22 +107,16 @@ impl<'a> UnicodeData<'a> {
 			return Err(error_message("invalid row format"));
 		}
 
+		//----[ field parsing ]-----------------------------------------------//
+
 		let code = parse_code(code).map_err(|err| error_message(&err))?;
 
 		if name.trim().len() == 0 {
 			return Err(error_message("empty name"));
 		}
 
-		let field_error = |field: &str, value: &str| {
-			let message = format!("invalid {} `{}`", field, value);
-			error_message(&message)
-		};
-
 		let category =
 			Category::parse(category).ok_or_else(|| field_error("category", category))?;
-
-		let parse_u32 =
-			|name: &str, value: &str| value.parse::<u32>().map_err(|_| field_error(name, value));
 
 		let combining_class = parse_u32("combining class", combining_class)?;
 
@@ -155,6 +164,8 @@ impl<'a> UnicodeData<'a> {
 		let uppercase_mapping = parse_case("uppercase mapping", uppercase_mapping)?;
 		let lowercase_mapping = parse_case("lowercase mapping", lowercase_mapping)?;
 		let titlecase_mapping = parse_case("titlecase mapping", titlecase_mapping)?;
+
+		//----[ result ]------------------------------------------------------//
 
 		let output = UnicodeData {
 			code,
