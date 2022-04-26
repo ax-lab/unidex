@@ -16,6 +16,7 @@ macro_rules! include_ucd {
 #[derive(Clone, Copy)]
 pub enum InputFile {
 	Blocks,
+	ReadMe,
 	UnicodeData,
 }
 
@@ -27,6 +28,7 @@ impl Input {
 	pub fn get(file: InputFile) -> Self {
 		match file {
 			InputFile::Blocks => include_ucd!("Blocks.txt"),
+			InputFile::ReadMe => include_ucd!("ReadMe.txt"),
 			InputFile::UnicodeData => include_ucd!("UnicodeData.txt"),
 		}
 	}
@@ -45,6 +47,11 @@ impl Input {
 			.map(|x| x.trim_end())
 			.filter(|x| x.len() > 0);
 		lines
+	}
+
+	/// Returns the full text for the input trimmed.
+	pub fn text(&self) -> &'static str {
+		self.0.trim()
 	}
 }
 
@@ -79,5 +86,12 @@ mod tests {
 		let input = read_test_input!("comments.in");
 		let input = input.lines().collect::<Vec<_>>();
 		assert_eq!(input, vec!["nc 1", "nc 2", "nc 3", "nc 4"]);
+	}
+
+	#[test]
+	fn can_read_entire_file() {
+		let input = read_test_input!("basic-123.in");
+		let input = input.text();
+		assert_eq!(input, "line 1\nline 2\nline 3");
 	}
 }

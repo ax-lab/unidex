@@ -22,3 +22,6 @@ pub use unicode_data::*;
 
 mod data;
 pub use data::*;
+
+mod version;
+pub use version::*;
