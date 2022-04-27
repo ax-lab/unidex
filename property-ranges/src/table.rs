@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::ops::{Range, RangeInclusive};
 
 pub struct PropertyTable {
 	range: Option<RangeInclusive<u32>>,
@@ -25,13 +25,13 @@ impl PropertyTable {
 		PropertyValue(self.range.as_ref().unwrap().clone(), T::Value::get_some())
 	}
 
-	pub fn set_range<T: PropertyKey>(
+	pub fn set_range<R: CodeRange, T: PropertyKey>(
 		&mut self,
-		range: RangeInclusive<u32>,
+		range: R,
 		_key: T,
 		_property: T::Value,
 	) {
-		self.range = Some(range);
+		self.range = Some(RangeInclusive::new(range.start(), range.end_inclusive()));
 	}
 }
 
@@ -61,6 +61,31 @@ impl SomeValue for u32 {
 impl SomeValue for &'static str {
 	fn get_some() -> Self {
 		"some property"
+	}
+}
+
+pub trait CodeRange {
+	fn start(&self) -> u32;
+	fn end_inclusive(&self) -> u32;
+}
+
+impl CodeRange for Range<u32> {
+	fn start(&self) -> u32 {
+		self.start
+	}
+
+	fn end_inclusive(&self) -> u32 {
+		self.end - 1
+	}
+}
+
+impl CodeRange for RangeInclusive<u32> {
+	fn start(&self) -> u32 {
+		*self.start()
+	}
+
+	fn end_inclusive(&self) -> u32 {
+		*self.end()
 	}
 }
 
@@ -108,5 +133,18 @@ mod tests {
 		assert_eq!(table_b.count(), 10);
 		assert_eq!(table_b.count_ranges(), 1);
 		assert_eq!(table_b.get_range(0, SomeKeyB), PropertyValue(0..=9, 42u32));
+	}
+
+	#[test]
+	fn supports_non_inclusive_range() {
+		struct Key;
+
+		impl PropertyKey for Key {
+			type Value = u32;
+		}
+
+		let mut table = PropertyTable::new();
+		table.set_range(0..10, Key, 42);
+		assert_eq!(table.get_range(0, Key), PropertyValue(0..=9, 42));
 	}
 }
