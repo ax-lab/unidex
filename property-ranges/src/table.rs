@@ -69,16 +69,16 @@ impl PropertyRange {
 		}
 	}
 
-	pub fn get<T: PropertyKey + 'static>(&self, key: T) -> T::Value {
+	pub fn get<T: PropertyKey + 'static>(&self, key: T) -> Option<T::Value> {
 		for (my_key, val) in self.values.iter() {
 			if let Some(my_key) = my_key.downcast_ref::<T>() {
 				if &key == my_key {
 					let val = val.downcast_ref::<T::Value>();
-					return val.unwrap().clone();
+					return Some(val.unwrap().clone());
 				}
 			}
 		}
-		panic!()
+		None
 	}
 }
 
@@ -161,7 +161,7 @@ mod tests {
 
 		let range_a = table_a.get_range(0);
 		assert_eq!(range_a.range, 1..=255);
-		assert_eq!(range_a.get(SomeKeyA), "some property");
+		assert_eq!(range_a.get(SomeKeyA), Some("some property"));
 
 		let mut table_b = PropertyTable::new();
 		table_b.set_range(0..=9, SomeKeyB, 42);
@@ -170,7 +170,7 @@ mod tests {
 
 		let range_b = table_b.get_range(0);
 		assert_eq!(range_b.range, 0..=9);
-		assert_eq!(range_b.get(SomeKeyB), 42u32);
+		assert_eq!(range_b.get(SomeKeyB), Some(42));
 	}
 
 	#[test]
@@ -187,8 +187,8 @@ mod tests {
 		table.set_range(0..=9, Key("b"), "value b");
 
 		let range = table.get_range(0);
-		assert_eq!(range.get(Key("a")), "value a");
-		assert_eq!(range.get(Key("b")), "value b");
+		assert_eq!(range.get(Key("a")), Some("value a"));
+		assert_eq!(range.get(Key("b")), Some("value b"));
 	}
 
 	#[test]
@@ -209,8 +209,8 @@ mod tests {
 		let b = table.get_range(1);
 		assert_eq!(a.range, 10..=19);
 		assert_eq!(b.range, 20..=29);
-		assert_eq!(a.get(Key), 1);
-		assert_eq!(b.get(Key), 2);
+		assert_eq!(a.get(Key), Some(1));
+		assert_eq!(b.get(Key), Some(2));
 	}
 
 	#[test]
@@ -225,5 +225,17 @@ mod tests {
 		let mut table = PropertyTable::new();
 		table.set_range(0..10, Key, 42);
 		assert_eq!(table.get_range(0).range, 0..=9);
+	}
+
+	#[test]
+	fn returns_none_for_unset_property() {
+		impl PropertyKey for &'static str {
+			type Value = u32;
+		}
+
+		let mut table = PropertyTable::new();
+		table.set_range(0..10, "key", 0);
+
+		assert_eq!(table.get_range(0).get("other key"), None);
 	}
 }
