@@ -1,10 +1,32 @@
-#[derive(Clone)]
+/// Single range in a [`CodepointRangeMap`].
+#[derive(Clone, Eq, PartialEq)]
 pub struct CodepointRange<T> {
 	pub first: u32,
 	pub last: u32,
 	pub value: T,
 }
 
+/// Map ranges of [`u32`] codepoints to their respective values.
+///
+/// This map supports building a sorted list of codepoint ranges mapping to
+/// specific values. As range values are set and updated, this provides the
+/// necessary logic to split input ranges into sub-ranges according to their
+/// unique values.
+///
+/// To set the value for a range call [`set`](CodepointRangeMap::set) with an
+/// updater function. The map splits overlapping ranges and calls the function
+/// to set or update the value for each sub-range:
+///
+/// ```
+/// # use property_ranges::*;
+/// let mut map = CodepointRangeMap::default();
+/// map.set(0, 5, |v| *v = 100); // `v` starts as zero
+/// map.set(3, 9, |v| *v += 25); // `v` is 100 for the existing `3..=5` range
+/// assert!(map.count() == 3);
+/// assert!(map.get(0) == &CodepointRange{ first: 0, last: 2, value: 100 });
+/// assert!(map.get(1) == &CodepointRange{ first: 3, last: 5, value: 125 });
+/// assert!(map.get(2) == &CodepointRange{ first: 6, last: 9, value: 25  });
+/// ```
 pub struct CodepointRangeMap<T: Default + Clone> {
 	ranges: Vec<CodepointRange<T>>,
 }
@@ -14,11 +36,22 @@ impl<T: Default + Clone> CodepointRangeMap<T> {
 		self.ranges.len()
 	}
 
+	/// Set the value for an inclusive range using an updater function.
+	///
+	/// If the input range overlaps existing ranges, this will split the input
+	/// range accordingly and call the updater function for each sub-range.
+	///
+	/// For each sub-range, the updater will receive a mutable reference for
+	/// the current value of that sub-range. If the sub-range is not yet mapped,
+	/// then the reference value will be the default.
 	pub fn set<Fn: FnMut(&mut T)>(&mut self, mut first: u32, last: u32, mut updater: Fn) {
 		if last < first {
 			panic!("CodepointRangeMap: invalid range (last < first)");
 		}
 
+		// this is very un-optimized, but we are only supposed to be used
+		// during code generation, so unless build times become an issue we
+		// should be okay
 		let mut new_entries = Vec::new();
 		for range in self.ranges.iter_mut() {
 			if first < range.first {
@@ -92,6 +125,17 @@ mod test_codepoint_map {
 		map.set(20, 19, |_| {});
 	}
 
+	/// Provides a simple DSL to generate test cases for a `CodepointRangeMap`
+	/// with `String` values.
+	///
+	/// The following verb sentences are supported:
+	///
+	/// - `set FIRST..LAST = VALUE`
+	/// - `add FIRST..LAST = VALUE`
+	/// - `check count N`
+	/// - `check INDEX: FIRST..LAST = VALUE`
+	///
+	/// This will expand to the respective setup code and assertions.
 	macro_rules! check_map {
 		($($tokens:tt)*) => {
 			let mut map = CodepointRangeMap::default();
@@ -99,6 +143,7 @@ mod test_codepoint_map {
 		};
 	}
 
+	/// Helper macro for [`check_map`] that recursively expands the grammar.
 	macro_rules! _check_map_body {
 		($map:ident, ) => {};
 
