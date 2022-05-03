@@ -3,8 +3,10 @@ use std::{
 	ops::{Range, RangeInclusive},
 };
 
+use crate::CodepointRangeMap;
+
 pub struct PropertyTable {
-	ranges: Vec<PropertyRange>,
+	ranges: CodepointRangeMap<Properties>,
 }
 
 impl PropertyTable {
@@ -14,21 +16,17 @@ impl PropertyTable {
 		}
 	}
 
-	pub fn count(&self) -> usize {
-		if let Some(row) = self.ranges.iter().next() {
-			let range = &row.range;
-			(range.end() - range.start()) as usize + 1
-		} else {
-			0
-		}
-	}
-
 	pub fn count_ranges(&self) -> usize {
-		self.ranges.len()
+		self.ranges.count()
 	}
 
-	pub fn get_range(&self, index: usize) -> &PropertyRange {
-		&self.ranges[index]
+	pub fn get_range(&self, index: usize) -> PropertyRange {
+		let range = self.ranges.get(index);
+		PropertyRange {
+			first: range.first,
+			last: range.last,
+			properties: &range.value,
+		}
 	}
 
 	pub fn set_range<R: CodeRange, T: PropertyKey>(
@@ -37,21 +35,23 @@ impl PropertyTable {
 		key: T,
 		property: T::Value,
 	) {
-		let range = RangeInclusive::new(range.start(), range.end_inclusive());
-		for it in self.ranges.iter_mut() {
-			if it.range == range {
-				it.values.push((key.as_any(), T::value_to_any(property)));
-				return;
-			} else if *it.range.end() + 1 == *range.start() {
-				if it.get(key.clone()) == Some(property.clone()) && it.values.len() == 1 {
-					it.range = RangeInclusive::new(*it.range.start(), *range.end());
-					return;
-				}
-			}
-		}
-		let mut range = PropertyRange::new(range);
-		range.values.push((key.as_any(), T::value_to_any(property)));
-		self.ranges.push(range);
+		let sta = range.start();
+		let end = range.end_inclusive();
+		self.ranges.set(sta, end, |values| {
+			values.set(key.clone(), property.clone());
+		});
+	}
+}
+
+pub struct PropertyRange<'a> {
+	pub first: u32,
+	pub last: u32,
+	properties: &'a Properties,
+}
+
+impl<'a> PropertyRange<'a> {
+	pub fn get<T: PropertyKey + 'static>(&self, key: T) -> Option<T::Value> {
+		self.properties.get(key)
 	}
 }
 
@@ -61,44 +61,101 @@ impl Default for PropertyTable {
 	}
 }
 
-pub struct PropertyRange {
-	pub range: RangeInclusive<u32>,
-	values: Vec<(Box<dyn Any>, Box<dyn Any>)>,
+pub struct Properties {
+	values: Vec<(Box<dyn BaseProperty>, Box<dyn Any>)>,
 }
 
-impl PropertyRange {
-	pub(crate) fn new(range: RangeInclusive<u32>) -> Self {
-		PropertyRange {
-			range,
+impl Properties {
+	pub(crate) fn new() -> Self {
+		Properties {
 			values: Default::default(),
 		}
 	}
 
 	pub fn get<T: PropertyKey + 'static>(&self, key: T) -> Option<T::Value> {
+		let key = key.as_base();
 		for (my_key, val) in self.values.iter() {
-			if let Some(my_key) = my_key.downcast_ref::<T>() {
-				if &key == my_key {
-					let val = val.downcast_ref::<T::Value>();
-					return Some(val.unwrap().clone());
-				}
+			if my_key.is_same(&key) {
+				let val = val.downcast_ref::<T::Value>();
+				return Some(val.unwrap().clone());
 			}
 		}
 		None
+	}
+
+	fn set<T: PropertyKey + 'static>(&mut self, key: T, value: T::Value) {
+		let key = key.as_base();
+		let value = T::value_to_any(value);
+		for (my_key, val) in self.values.iter_mut() {
+			if my_key.is_same(&key) {
+				*val = value;
+				return;
+			}
+		}
+		self.values.push((key, value));
+	}
+}
+
+impl Default for Properties {
+	fn default() -> Self {
+		Properties::new()
+	}
+}
+
+impl Clone for Properties {
+	fn clone(&self) -> Self {
+		let mut clone = Properties::new();
+		for (my_key, val) in self.values.iter() {
+			clone
+				.values
+				.push((my_key.clone_self(), my_key.clone_value(val)));
+		}
+		clone
 	}
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct PropertyValue<T>(pub RangeInclusive<u32>, pub T);
 
-pub trait PropertyKey: PartialEq + Clone + 'static {
+pub trait BaseProperty {
+	fn is_same(&self, other: &Box<dyn BaseProperty>) -> bool;
+	fn as_any(&self) -> Box<dyn Any>;
+	fn clone_self(&self) -> Box<dyn BaseProperty>;
+	fn clone_value(&self, value: &Box<dyn Any>) -> Box<dyn Any>;
+}
+
+pub trait PropertyKey: BaseProperty + PartialEq + Clone + 'static {
 	type Value: Clone + PartialEq;
 
-	fn as_any(&self) -> Box<dyn Any> {
+	fn as_base(&self) -> Box<dyn BaseProperty> {
 		Box::new(self.clone())
 	}
 
 	fn value_to_any(value: Self::Value) -> Box<dyn Any> {
 		Box::new(value)
+	}
+}
+
+impl<T: PropertyKey> BaseProperty for T {
+	fn is_same(&self, other: &Box<dyn BaseProperty>) -> bool {
+		if let Some(other) = other.as_any().downcast_ref::<Self>() {
+			other == self
+		} else {
+			false
+		}
+	}
+
+	fn as_any(&self) -> Box<dyn Any> {
+		Box::new(self.clone())
+	}
+
+	fn clone_self(&self) -> Box<dyn BaseProperty> {
+		Box::new(self.clone())
+	}
+
+	fn clone_value(&self, value: &Box<dyn Any>) -> Box<dyn Any> {
+		let value = value.downcast_ref::<T::Value>().unwrap();
+		Box::new(value.clone())
 	}
 }
 
@@ -134,13 +191,13 @@ mod tests {
 	#[test]
 	fn can_create_empty() {
 		let empty = PropertyTable::new();
-		assert_eq!(empty.count(), 0);
+		assert_eq!(empty.count_ranges(), 0);
 	}
 
 	#[test]
 	fn supports_default() {
 		let empty: PropertyTable = Default::default();
-		assert_eq!(empty.count(), 0);
+		assert_eq!(empty.count_ranges(), 0);
 	}
 
 	#[test]
@@ -161,20 +218,20 @@ mod tests {
 
 		let mut table_a = PropertyTable::new();
 		table_a.set_range(1..=255, SomeKeyA, "some property");
-		assert_eq!(table_a.count(), 255);
 		assert_eq!(table_a.count_ranges(), 1);
 
 		let row_a = table_a.get_range(0);
-		assert_eq!(row_a.range, 1..=255);
+		assert_eq!(row_a.first, 1);
+		assert_eq!(row_a.last, 255);
 		assert_eq!(row_a.get(SomeKeyA), Some("some property"));
 
 		let mut table_b = PropertyTable::new();
 		table_b.set_range(0..=9, SomeKeyB, 42);
-		assert_eq!(table_b.count(), 10);
 		assert_eq!(table_b.count_ranges(), 1);
 
 		let row_b = table_b.get_range(0);
-		assert_eq!(row_b.range, 0..=9);
+		assert_eq!(row_b.first, 0);
+		assert_eq!(row_b.last, 9);
 		assert_eq!(row_b.get(SomeKeyB), Some(42));
 	}
 
@@ -212,8 +269,10 @@ mod tests {
 
 		let a = table.get_range(0);
 		let b = table.get_range(1);
-		assert_eq!(a.range, 10..=19);
-		assert_eq!(b.range, 30..=39);
+		assert_eq!(a.first, 10);
+		assert_eq!(a.last, 19);
+		assert_eq!(b.first, 30);
+		assert_eq!(b.last, 39);
 		assert_eq!(a.get(Key), Some(1));
 		assert_eq!(b.get(Key), Some(3));
 	}
@@ -229,7 +288,8 @@ mod tests {
 
 		let mut table = PropertyTable::new();
 		table.set_range(0..10, Key, 42);
-		assert_eq!(table.get_range(0).range, 0..=9);
+		assert_eq!(table.get_range(0).first, 0);
+		assert_eq!(table.get_range(0).last, 9);
 	}
 
 	#[test]
@@ -249,6 +309,13 @@ mod tests {
 
 	impl PropertyKey for Key {
 		type Value = u32;
+	}
+
+	macro_rules! check_table {
+		($($tokens:tt)*) => {
+			let mut table = PropertyTable::new();
+			_check_table_body!(table, $($tokens)*)
+		};
 	}
 
 	macro_rules! _check_table_body {
@@ -279,7 +346,7 @@ mod tests {
 				panic!("{}: no such range", header);
 			}
 			let row = $tb.get_range($index);
-			assert_eq!(row.range, $range,
+			assert_eq!(row.first..=row.last, $range,
 				"{}: expected range `{:?}`", header, $range);
 			$(
 				let actual_val = row.get(Key($key));
@@ -292,20 +359,40 @@ mod tests {
 		};
 	}
 
-	macro_rules! check_table {
-		($($tokens:tt)*) => {
-			let mut table = PropertyTable::new();
-			_check_table_body!(table, $($tokens)*)
-		};
+	#[test]
+	fn stores_entries_sorted_by_range() {
+		check_table!(
+			set 40..=49 => "x" = 4,
+			set 10..=19 => "x" = 1,
+			set 90..=99 => "x" = 9,
+			set 60..=69 => "x" = 6,
+			set 70..=79 => "x" = 7,
+			set 80..=89 => "x" = 8,
+			set 30..=39 => "x" = 3,
+			set 20..=29 => "x" = 2,
+			set 50..=59 => "x" = 5,
+			check 9 ranges,
+			check 0 as 10..=19 => { "x" = Some(1) }
+			check 1 as 20..=29 => { "x" = Some(2) }
+			check 2 as 30..=39 => { "x" = Some(3) }
+			check 3 as 40..=49 => { "x" = Some(4) }
+			check 4 as 50..=59 => { "x" = Some(5) }
+			check 5 as 60..=69 => { "x" = Some(6) }
+			check 6 as 70..=79 => { "x" = Some(7) }
+			check 7 as 80..=89 => { "x" = Some(8) }
+			check 8 as 90..=99 => { "x" = Some(9) }
+		);
 	}
 
 	#[test]
-	fn merges_consecutive_ranges_with_same_properties() {
+	fn splits_a_range_when_setting_with_overlap() {
 		check_table!(
-			set 0..10  => "a" = 10,
-			set 10..20 => "a" = 10,
-			check 1 range,
-			check 0 as 0..=19 => { "a" = Some(10) }
+			set 10..=90 => "x" = 1,
+			set 30..=40 => "x" = 2,
+			check 3 ranges,
+			check 0 as 10..=29 => { "x" = Some(1) }
+			check 1 as 30..=40 => { "x" = Some(2) }
+			check 2 as 41..=90 => { "x" = Some(1) }
 		);
 	}
 
