@@ -44,7 +44,7 @@ impl<T: Default + Clone> CodepointRangeMap<T> {
 	/// For each sub-range, the updater will receive a mutable reference for
 	/// the current value of that sub-range. If the sub-range is not yet mapped,
 	/// then the reference value will be the default.
-	pub fn set<Fn: FnMut(&mut T)>(&mut self, mut first: u32, last: u32, mut updater: Fn) {
+	pub fn set<Fn: FnMut(&mut T)>(&mut self, first: u32, last: u32, mut updater: Fn) {
 		if last < first {
 			panic!("CodepointRangeMap: invalid range (last < first)");
 		}
@@ -52,49 +52,72 @@ impl<T: Default + Clone> CodepointRangeMap<T> {
 		// this is very un-optimized, but we are only supposed to be used
 		// during code generation, so unless build times become an issue we
 		// should be okay
-		let mut new_entries = Vec::new();
+
+		let mut entries_to_add = Vec::new();
+		let mut next_first = first;
 		for range in self.ranges.iter_mut() {
-			if first < range.first {
-				let mut value = T::default();
-				updater(&mut value);
+			let needs_range_before = next_first < range.first;
+			if needs_range_before {
+				let mut new_value = T::default();
+				updater(&mut new_value);
 
 				let last = std::cmp::min(range.first - 1, last);
-				new_entries.push(CodepointRange { first, last, value });
-				first = range.first;
+				entries_to_add.push(CodepointRange {
+					first: next_first,
+					last,
+					value: new_value,
+				});
+				next_first = range.first;
 			}
 
-			if first <= range.last && last >= range.first {
-				if first > range.first {
-					let mut head = range.clone();
-					head.last = first - 1;
-					new_entries.push(head);
-					range.first = first;
-				}
-				first = range.last + 1;
+			let overlaps_current = next_first <= range.last && last >= range.first;
+			if overlaps_current {
+				let update_from = next_first;
+				next_first = range.last + 1;
 
-				if last < range.last {
-					let mut tail = range.clone();
-					tail.first = last + 1;
-					new_entries.push(tail);
-					range.last = last;
+				let range_to_update = range;
+
+				let has_unchanged_prefix = update_from > range_to_update.first;
+				if has_unchanged_prefix {
+					let mut prefix = range_to_update.clone();
+					prefix.last = update_from - 1;
+					range_to_update.first = update_from;
+					entries_to_add.push(prefix);
 				}
 
-				updater(&mut range.value);
+				let has_unchanged_suffix = last < range_to_update.last;
+				if has_unchanged_suffix {
+					let mut suffix = range_to_update.clone();
+					suffix.first = last + 1;
+					range_to_update.last = last;
+					entries_to_add.push(suffix);
+				}
+
+				updater(&mut range_to_update.value);
 			}
 
-			if first > last {
+			if next_first > last {
 				break;
 			}
 		}
-		if first <= last {
+
+		if next_first <= last {
 			let mut value = T::default();
 			updater(&mut value);
-			new_entries.push(CodepointRange { first, last, value });
+			entries_to_add.push(CodepointRange {
+				first: next_first,
+				last,
+				value,
+			});
 		}
-		self.ranges.append(&mut new_entries);
+		self.ranges.append(&mut entries_to_add);
 		self.ranges.sort_by_key(|x| x.first);
 	}
 
+	/// Get the value for a given range. This will panic if the index is out
+	/// of bounds.
+	///
+	/// Note that ranges don't overlap and are stored in sorted order.
 	pub fn get(&self, index: usize) -> &CodepointRange<T> {
 		&self.ranges[index]
 	}
