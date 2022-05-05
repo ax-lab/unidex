@@ -18,7 +18,7 @@ pub struct CodepointRange<T> {
 /// to set or update the value for each sub-range:
 ///
 /// ```
-/// # use property_ranges::*;
+/// # use property_ranges::ranges::*;
 /// let mut map = CodepointRangeMap::default();
 /// map.set(0, 5, |v| *v = 100); // `v` starts as zero
 /// map.set(3, 9, |v| *v += 25); // `v` is 100 for the existing `3..=5` range

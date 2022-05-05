@@ -3,7 +3,7 @@ use std::{
 	ops::{Range, RangeInclusive},
 };
 
-use crate::CodepointRangeMap;
+use crate::ranges::CodepointRangeMap;
 
 /// Provides a data structure that can map arbitrary property values for
 /// unicode ranges of `u32` codepoints.
