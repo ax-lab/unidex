@@ -134,6 +134,7 @@ impl<T: Default + Clone> Default for CodepointRangeMap<T> {
 #[cfg(test)]
 mod test_codepoint_map {
 	use super::*;
+	use tux::assert_panic;
 
 	#[test]
 	fn default_is_empty() {
@@ -142,10 +143,11 @@ mod test_codepoint_map {
 	}
 
 	#[test]
-	#[should_panic = "invalid range"]
 	fn add_invalid_range_panics() {
-		let mut map: CodepointRangeMap<()> = Default::default();
-		map.set(20, 19, |_| {});
+		assert_panic!("invalid range" in {
+			let mut map: CodepointRangeMap<()> = Default::default();
+			map.set(20, 19, |_| {});
+		});
 	}
 
 	/// Provides a simple DSL to generate test cases for a `CodepointRangeMap`
