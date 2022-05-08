@@ -2,5 +2,6 @@
 
 members = [
 	"ucd-parser",
-	"ucd-property-ranges"
+	"ucd-property-ranges",
+	"unidex"
 ]
