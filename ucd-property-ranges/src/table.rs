@@ -12,7 +12,7 @@ use crate::ranges::CodepointRangeMap;
 /// are used to set and retrieve the property value.
 ///
 /// ```
-/// use property_ranges::*;
+/// use ucd_property_ranges::*;
 ///
 /// #[derive(Clone, PartialEq)]
 /// struct IntProperty(&'static str);
@@ -173,7 +173,7 @@ impl Clone for Properties {
 /// in a [`RangeTable`].
 ///
 /// ```
-/// # use property_ranges::*;
+/// # use ucd_property_ranges::*;
 /// #[derive(Clone, PartialEq)]
 /// struct Key(&'static str);
 ///

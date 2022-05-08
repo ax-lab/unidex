@@ -2,5 +2,5 @@
 
 members = [
 	"ucd-parser",
-	"property-ranges"
+	"ucd-property-ranges"
 ]
